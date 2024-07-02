@@ -97,7 +97,7 @@ export function Navbar() {
             className={`ml-10 hidden items-center gap-6 lg:flex ${isScrolling ? "text-gray-900" : "text-white"
               }`}
           >
-            <a href="https://api.whatsapp.com/send?phone=5584999642214&text=Ol%C3%A1%2C%20gast%C3%A9cnica!">
+            <a href="https://api.whatsapp.com/send?phone=5584999672214&text=Ol%C3%A1%2C%20gast%C3%A9cnica!">
               <IconButton variant="gradient" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}>
                 <i className="fa-brands fa-whatsapp text-lg"></i>
               </IconButton>
@@ -129,7 +129,7 @@ export function Navbar() {
       <Collapse open={open}>
         <div className="container mx-auto mt-4 rounded-lg bg-white px-6 py-5">
           <ul className="flex  gap-4 text-gray-900 justify-center">
-            <a href="https://api.whatsapp.com/send?phone=5584999642214&text=Ol%C3%A1%2C%20gast%C3%A9cnica!" >
+            <a href="https://api.whatsapp.com/send?phone=5584999672214&text=Ol%C3%A1%2C%20gast%C3%A9cnica!" >
               <IconButton variant="gradient" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}>
                 <i className="fa-brands fa-whatsapp text-lg"></i>
               </IconButton>

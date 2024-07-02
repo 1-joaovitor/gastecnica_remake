@@ -37,7 +37,7 @@ export function Footer() {
           </Typography>
 
           <div className="flex w-fit justify-center gap-2">
-            <a href="https://api.whatsapp.com/send?phone=5584999642214&text=Ol%C3%A1%2C%20gast%C3%A9cnica!" >
+            <a href="https://api.whatsapp.com/send?phone=5584999672214&text=Ol%C3%A1%2C%20gast%C3%A9cnica!" >
               <IconButton size="sm" color="gray" variant="text"  placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}>
                 <i className="fa-brands fa-whatsapp text-lg"></i>
               </IconButton>
