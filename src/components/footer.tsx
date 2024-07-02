@@ -32,19 +32,18 @@ export function Footer() {
 
             target="_blank"
             variant="h6"
-            className="text-gray-900"
-          >
+            className="text-gray-900"  placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}          >
             Gastécnica
           </Typography>
 
           <div className="flex w-fit justify-center gap-2">
             <a href="https://api.whatsapp.com/send?phone=5584999642214&text=Ol%C3%A1%2C%20gast%C3%A9cnica!" >
-              <IconButton size="sm" color="gray" variant="text">
-                <i class="fa-brands fa-whatsapp text-lg"></i>
+              <IconButton size="sm" color="gray" variant="text"  placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}>
+                <i className="fa-brands fa-whatsapp text-lg"></i>
               </IconButton>
             </a>
             <a href="https://instagram.com/gastecnica_servicos?igshid=NjZiMGI4OTY=">
-              <IconButton size="sm" color="gray" variant="text">
+              <IconButton size="sm" color="gray" variant="text"  placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}>
                 <i className="fa-brands fa-instagram text-lg" />
               </IconButton>
             </a>
@@ -55,8 +54,7 @@ export function Footer() {
         </div>
         <Typography
           color="blue-gray"
-          className="text-center mt-12 font-normal !text-gray-700"
-        >
+          className="text-center mt-12 font-normal !text-gray-700"  placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}        >
           &copy; {CURRENT_YEAR} Gastecnica{" "}
           <a target="_blank">
             todos os direitos

@@ -8,9 +8,8 @@ export function FixedPlugin() {
       <Button
         color="green"
         size="sm"
-        className="!fixed bottom-4 right-4 flex gap-1 pl-2 items-center border border-blue-gray-50"
-      >
-        <i class="fa-brands fa-whatsapp text-lg"></i>
+        className="!fixed bottom-4 right-4 flex gap-1 pl-2 items-center border border-blue-gray-50"  placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}      >
+        <i className="fa-brands fa-whatsapp text-lg"></i>
         Mande uma mensagem
       </Button>
     </a>

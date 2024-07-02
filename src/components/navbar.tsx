@@ -2,15 +2,14 @@ import React from "react";
 import {
   Navbar as MTNavbar,
   Collapse,
-  Button,
+
   IconButton,
   Typography,
 } from "@material-tailwind/react";
 import {
   RectangleStackIcon,
   UserCircleIcon,
-  CommandLineIcon,
-  Squares2X2Icon,
+
   XMarkIcon,
   Bars3Icon,
 } from "@heroicons/react/24/solid";
@@ -28,8 +27,7 @@ function NavItem({ children, href }: NavItemProps) {
         href={href || "#"}
         target={href ? "_blank" : "_self"}
         variant="paragraph"
-        className="flex items-center gap-2 font-medium"
-      >
+        className="flex items-center gap-2 font-medium" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}      >
         {children}
       </Typography>
     </li>
@@ -85,13 +83,11 @@ export function Navbar() {
       fullWidth
       blurred={false}
       color={isScrolling ? "white" : "transparent"}
-      className="fixed top-0 z-50 border-0"
-    >
+      className="fixed top-0 z-50 border-0" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}    >
       <div className="container mx-auto flex items-center justify-between">
         <Typography
           color={isScrolling ? "blue-gray" : "white"}
-          className="text-lg font-bold"
-        >
+          className="text-lg font-bold" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}        >
           Gastécnica
         </Typography>
 
@@ -102,13 +98,13 @@ export function Navbar() {
               }`}
           >
             <a href="https://api.whatsapp.com/send?phone=5584999642214&text=Ol%C3%A1%2C%20gast%C3%A9cnica!">
-              <IconButton variant="gradient">
-                <i class="fa-brands fa-whatsapp text-lg"></i>
+              <IconButton variant="gradient" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}>
+                <i className="fa-brands fa-whatsapp text-lg"></i>
               </IconButton>
             </a>
             <a href="https://instagram.com/gastecnica_servicos?igshid=NjZiMGI4OTY=">
-              <IconButton variant="gradient">
-                <i class="fa-brands fa-instagram text-lg"></i>
+              <IconButton variant="gradient" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}>
+                <i className="fa-brands fa-instagram text-lg"></i>
               </IconButton>
             </a>
             { /*<a href="#buttons-with-link">
@@ -122,8 +118,7 @@ export function Navbar() {
           variant="text"
           color={isScrolling ? "gray" : "white"}
           onClick={handleOpen}
-          className="ml-auto inline-block lg:hidden"
-        >
+          className="ml-auto inline-block lg:hidden" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}        >
           {open ? (
             <XMarkIcon strokeWidth={2} className="h-6 w-6" />
           ) : (
@@ -135,13 +130,13 @@ export function Navbar() {
         <div className="container mx-auto mt-4 rounded-lg bg-white px-6 py-5">
           <ul className="flex  gap-4 text-gray-900 justify-center">
             <a href="https://api.whatsapp.com/send?phone=5584999642214&text=Ol%C3%A1%2C%20gast%C3%A9cnica!" >
-              <IconButton variant="gradient">
-                <i class="fa-brands fa-whatsapp text-lg"></i>
+              <IconButton variant="gradient" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}>
+                <i className="fa-brands fa-whatsapp text-lg"></i>
               </IconButton>
             </a>
             <a href="https://instagram.com/gastecnica_servicos?igshid=NjZiMGI4OTY=">
-              <IconButton variant="gradient">
-                <i class="fa-brands fa-instagram text-lg"></i>
+              <IconButton variant="gradient" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}>
+                <i className="fa-brands fa-instagram text-lg"></i>
               </IconButton>
             </a>
             {/* <a href="#buttons-with-link">

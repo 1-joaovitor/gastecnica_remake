@@ -24,13 +24,12 @@ const EVENT_INFO = [
 export function AboutEvent() {
   return (
     <section className="container mx-auto flex flex-col items-center px-4 py-10">
-      <Typography variant="h3" className="text-center" color="blue-gray">
+      <Typography variant="h3" className="text-center" color="blue-gray" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}>
         Por que escolher a Gastécnica?
       </Typography>
       <Typography
         variant="lead"
-        className="mt-2 lg:max-w-4xl mb-8 w-full text-center font-normal !text-gray-500"
-      >
+        className="mt-2 lg:max-w-4xl mb-8 w-full text-center font-normal !text-gray-500" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}      >
         Opte pela Gastécnica e tenha a certeza de contar com uma equipe
         especializada e comprometida em oferecer serviços de alta qualidade e
         resultados duradouros.
