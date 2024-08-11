@@ -42,7 +42,7 @@ export function Footer() {
                 <i className="fa-brands fa-whatsapp text-lg"></i>
               </IconButton>
             </a>
-            <a href="https://instagram.com/gastecnica_servicos?igshid=NjZiMGI4OTY=">
+            <a href="https://instagram.com/gastecnicapecaseservicos?igshid=NjZiMGI4OTY=">
               <IconButton size="sm" color="gray" variant="text"  placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}>
                 <i className="fa-brands fa-instagram text-lg" />
               </IconButton>
