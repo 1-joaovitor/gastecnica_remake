@@ -2,7 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import { Layout, FixedPlugin } from "@/components";
-
+import { SpeedInsights } from "@vercel/speed-insights/next"
 const roboto = Roboto({
   subsets: ["latin"],
   weight: ["300", "400", "500", "700", "900"],
@@ -34,6 +34,7 @@ export default function RootLayout({
         <Layout>
           {children}
           <FixedPlugin />
+          <SpeedInsights/>
         </Layout>
         <link
           rel="stylesheet"
