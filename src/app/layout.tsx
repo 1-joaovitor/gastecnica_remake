@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import { Layout, FixedPlugin } from "@/components";
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { AuthProvider } from "@/context/authContext";
 const roboto = Roboto({
   subsets: ["latin"],
   weight: ["300", "400", "500", "700", "900"],
@@ -28,14 +29,16 @@ export default function RootLayout({
           data-site="YOUR_DOMAIN_HERE"
           src="https://api.nepcha.com/js/nepcha-analytics.js"
         ></script>
-        <link rel="shortcut icon" href="/favicon.png" type="image/png" />
+        <link rel="shortcut icon" href="/image/logo.png" type="image/png" />
       </head>
       <body className={roboto.className}>
-        <Layout>
-          {children}
-          <FixedPlugin />
-          <SpeedInsights/>
-        </Layout>
+        <AuthProvider>
+          <Layout>
+            {children}
+            <FixedPlugin />
+            <SpeedInsights />
+          </Layout>
+        </AuthProvider>
         <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css"

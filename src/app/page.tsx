@@ -1,7 +1,5 @@
 // components
 import { Navbar, Footer } from "@/components";
-
-// sections
 import Hero from "./hero";
 import SponsoredBy from "./sponsored-by";
 import AboutEvent from "./about-event";

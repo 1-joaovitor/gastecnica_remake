@@ -40,7 +40,7 @@ export function EventContent() {
     <section className="py-8 px-8 lg:py-20">
       <Tabs value="Day1" className="mb-8">
         <div className="w-full flex mb-8 flex-col items-center">
-          <Typography variant="h2" className="text-center" color="blue-gray" placeholder={undefined} onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined}>
+          <Typography variant="h2" className="text-center" color="blue-gray" placeholder={undefined}>
             Áreas de atuação
           </Typography>
         </div>
