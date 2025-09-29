@@ -1,15 +1,15 @@
 import React, { Fragment } from 'react';
-import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
-
+import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
+import Image from "next/image";
 const styles = StyleSheet.create({
     page: { fontSize: 11, paddingTop: 20, paddingLeft: 40, paddingRight: 40, lineHeight: 1.5, flexDirection: 'column' },
     spaceBetween: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', color: "#3E3E3E" },
     titleContainer: { flexDirection: 'row', marginTop: 24 },
     logo: { width: 90 },
     reportTitle: { fontSize: 16, textAlign: 'center' },
-    addressTitle: { fontSize: 11, fontWeight: 'bold' }, 
+    addressTitle: { fontSize: 11, fontWeight: 'bold' },
     invoice: { fontWeight: 'bold', fontSize: 20 },
-    invoiceNumber: { fontSize: 11, fontWeight: 'bold' }, 
+    invoiceNumber: { fontSize: 11, fontWeight: 'bold' },
     address: { fontWeight: 400, fontSize: 10 },
     theader: { marginTop: 20, fontSize: 10, fontWeight: 'bold', paddingTop: 4, paddingLeft: 7, flex: 1, height: 20, backgroundColor: '#DEDEDE', borderColor: 'whitesmoke', borderRightWidth: 1, borderBottomWidth: 1 },
     tbody: { fontSize: 9, paddingTop: 4, paddingLeft: 7, flex: 1, borderColor: 'whitesmoke', borderRightWidth: 1, borderBottomWidth: 1 },
@@ -40,7 +40,7 @@ const TableTotal = ({ items }) => {
 const InvoiceTitle = ({ logo }) => (
     <View style={styles.titleContainer}>
         <View style={styles.spaceBetween}>
-            <Image style={styles.logo} src={logo} />
+            <Image width={200} height={100} src={logo} />
             <Text style={styles.reportTitle}>Xpress Enterprises</Text>
         </View>
     </View>
