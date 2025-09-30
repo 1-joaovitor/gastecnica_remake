@@ -1,13 +1,34 @@
 import * as Yup from 'yup';
 export const schema = Yup.object().shape({
-    clientName: Yup.string().required('Campo obrigatório'),
-    clientCnpj: Yup.string().required('Campo obrigatório'),
-    clientEmail: Yup.string().email('Email inválido').required('Campo obrigatório'),
-    clientPhone: Yup.string().required('Campo obrigatório'),
+    clientName: Yup.string().when('type', {
+        is: 'avulso',
+        then: (schema) => schema.required('Campo obrigatório'),
+        otherwise: (schema) => schema.nullable()
+    }),
+    clientCnpj: Yup.string().when('type', {
+        is: 'avulso',
+        then: (schema) => schema.required('Campo obrigatório'),
+        otherwise: (schema) => schema.nullable()
+    }),
+    clientEmail: Yup.string().when('type', {
+        is: 'avulso',
+        then: (schema) => schema.email('Email inválido').required('Campo obrigatório'),
+        otherwise: (schema) => schema.nullable()
+    }),
+    clientPhone: Yup.string().when('type', {
+        is: 'avulso',
+        then: (schema) => schema.required('Campo obrigatório'),
+        otherwise: (schema) => schema.nullable()
+    }),
+    clientId: Yup.string().when('type', {
+        is: 'contract',
+        then: (schema) => schema.required('Cliente é obrigatório para contratos'),
+        otherwise: (schema) => schema.nullable()
+    }),
     description: Yup.string().required('Campo obrigatório'),
-    amount: Yup.string().required('Campo obrigatório'),
+    amount: Yup.number().nullable(), // Calculado automaticamente
     status: Yup.string().oneOf(['pending', 'approved', 'rejected'], 'Invalid status').required('Campo obrigatório'),
-    type: Yup.string().oneOf(['contract', 'service'], 'Invalid type').required('Campo obrigatório'),
+    type: Yup.string().oneOf(['avulso', 'contract'], 'Invalid type').required('Campo obrigatório'),
     items: Yup.array().of(
         Yup.object().shape({
             description: Yup.string().required('Campo obrigatório'),

@@ -15,6 +15,7 @@ import {
 import { useAuth } from "@/context/authContext";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import toast from "react-hot-toast";
 
 interface FormValues {
     email: string;
@@ -33,9 +34,11 @@ const Login = () => {
     const onSubmit = async (data: any) => {
         try {
             await login(data);
+            toast.success("Login realizado com sucesso!");
             router.push('/home');
         } catch (error: any) {
             console.log(error.message || "Ocorreu um erro ao fazer login.");
+            toast.error(error.response?.data?.message || "Erro ao fazer login. Verifique suas credenciais.");
         }
     };
 

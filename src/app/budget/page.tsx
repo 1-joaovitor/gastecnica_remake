@@ -2,28 +2,44 @@
 
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { Input, Textarea, Button, Select, Option } from '@material-tailwind/react';
+import { Input, Textarea, Button, Select, Option, Spinner } from '@material-tailwind/react';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import Sidebar from '@/components/sidebar';
 import { schema } from './schema';
 import InputMask from '@/components/inputMask';
+import { createBudget, getBudgetById, updateBudget, type Budget } from '@/services/budget';
+import { getClients, type Client } from '@/services/client';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 type ItemField = 'description' | 'quantity' | 'unitPrice' | 'total';
 
 
 
 const Budget = () => {
-    const { control, handleSubmit, register, setValue, getValues, formState: { errors } } = useForm({
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const budgetId = searchParams.get('id');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [clients, setClients] = useState<Client[]>([]);
+    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+    const [budgetType, setBudgetType] = useState<'avulso' | 'contract'>('avulso');
+
+    const { control, handleSubmit, register, setValue, getValues, formState: { errors }, reset, watch } = useForm({
         resolver: yupResolver(schema),
+        mode: 'onChange',
         defaultValues: {
             clientName: '',
             clientCnpj: '',
             clientEmail: '',
             clientPhone: '',
             description: '',
-            amount: '',
+            amount: 0,
             status: 'pending',
-            type: 'contract',
+            type: 'avulso',
             items: [{ description: '', quantity: 0, unitPrice: null, total: 0 }],
         },
     });
@@ -33,86 +49,397 @@ const Budget = () => {
         name: 'items',
     });
 
+    // Observar mudanças nos itens para calcular o total automaticamente
+    const watchedItems = watch('items');
+
+    // Calcular valor total automaticamente
+    useEffect(() => {
+        if (watchedItems && Array.isArray(watchedItems)) {
+            const totalAmount = watchedItems.reduce((sum: number, item: any) => {
+                const quantity = Number(item.quantity) || 0;
+                const unitPrice = Number(item.unitPrice) || 0;
+                return sum + (quantity * unitPrice);
+            }, 0);
+            setValue('amount', totalAmount);
+        }
+    }, [watchedItems, setValue]);
+
+    // Recalcular quando os campos de quantidade ou preço mudarem
+    useEffect(() => {
+        const subscription = watch((value, { name }) => {
+            if (name && (name.includes('quantity') || name.includes('unitPrice'))) {
+                setTimeout(() => {
+                    recalculateTotalAmount();
+                }, 50);
+            }
+        });
+        return () => subscription.unsubscribe();
+    }, [watch, setValue, getValues]);
+
+    // Carregar clientes
+    useEffect(() => {
+        const loadClients = async () => {
+            try {
+                const response = await getClients(1, 100); // Buscar todos os clientes
+                setClients(response.data);
+            } catch (error) {
+                console.error('Erro ao carregar clientes:', error);
+                toast.error('Erro ao carregar lista de clientes');
+            }
+        };
+        loadClients();
+    }, []);
+
+    // Limpar campos quando o tipo mudar
+    useEffect(() => {
+        if (budgetType === 'avulso') {
+            // Para avulso, limpar seleção de cliente
+            setSelectedClient(null);
+            setValue('clientId', '');
+        } else if (budgetType === 'contract') {
+            // Para contrato, limpar campos manuais
+            setValue('clientName', '');
+            setValue('clientCnpj', '');
+            setValue('clientEmail', '');
+            setValue('clientPhone', '');
+        }
+    }, [budgetType, setValue]);
+
+    // Carregar dados do orçamento se estiver editando
+    useEffect(() => {
+        if (budgetId) {
+            setIsEditMode(true);
+            loadBudgetData();
+        }
+    }, [budgetId]);
+
+    const loadBudgetData = async () => {
+        if (!budgetId) return;
+
+        try {
+            setIsLoading(true);
+            const budget = await getBudgetById(budgetId);
+
+            // Preencher o formulário com os dados do orçamento
+            reset({
+                clientName: budget.clientName || '',
+                clientCnpj: budget.clientCnpj || '',
+                clientEmail: budget.clientEmail || '',
+                clientPhone: budget.clientPhone || '',
+                description: budget.description || '',
+                amount: budget.amount || '',
+                status: budget.status || 'pending',
+                type: budget.type || 'avulso',
+                items: budget.items?.length > 0 ? budget.items : [{ description: '', quantity: 0, unitPrice: null, total: 0 }],
+            });
+        } catch (error) {
+            console.error('Erro ao carregar orçamento:', error);
+            toast.error('Erro ao carregar dados do orçamento');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
 
 
     const calculateTotal = (index: number, quantity: number, unitPrice: number) => {
-
         const total = quantity * unitPrice;
         setValue(`items.${index}.total`, total, { shouldValidate: true, shouldDirty: true });
     };
 
-    const handleChange = (index: number, field: ItemField, value: string | number) => {
+    const recalculateTotalAmount = () => {
+        const allItems = getValues('items');
+        if (allItems && Array.isArray(allItems)) {
+            const totalAmount = allItems.reduce((sum: number, item: any) => {
+                const itemQuantity = Number(item.quantity) || 0;
+                const itemUnitPrice = Number(item.unitPrice) || 0;
+                return sum + (itemQuantity * itemUnitPrice);
+            }, 0);
+            setValue('amount', totalAmount);
+        }
+    };
 
+    const handleTypeChange = (type: 'avulso' | 'contract') => {
+        setBudgetType(type);
+        setValue('type', type);
+
+        // Limpar todos os campos de cliente
+        setValue('clientName', '');
+        setValue('clientCnpj', '');
+        setValue('clientEmail', '');
+        setValue('clientPhone', '');
+        setValue('clientId', '');
+        setSelectedClient(null);
+
+        // Forçar revalidação do formulário
+        setTimeout(() => {
+            // Trigger validation to clear any error messages
+            const formValues = getValues();
+            reset(formValues);
+        }, 100);
+    };
+
+    const handleClientSelect = (clientId: string) => {
+        if (!clientId) {
+            // Se nenhum cliente foi selecionado, limpar tudo
+            setSelectedClient(null);
+            setValue('clientId', '');
+            setValue('clientName', '');
+            setValue('clientCnpj', '');
+            setValue('clientEmail', '');
+            setValue('clientPhone', '');
+            return;
+        }
+
+        const client = clients.find(c => c.id === clientId);
+        if (client) {
+            setSelectedClient(client);
+            setValue('clientId', clientId);
+            // Preencher campos de cliente automaticamente
+            setValue('clientName', client.name);
+            setValue('clientCnpj', client.cnpj);
+            setValue('clientEmail', client.email);
+            setValue('clientPhone', client.phone);
+        }
+    };
+
+    const handleChange = (index: number, field: ItemField, value: string | number) => {
         setValue(`items.${index}.${field}`, value);
         if (field === 'quantity' || field === 'unitPrice') {
             const quantity = getValues(`items.${index}.quantity`) || 0;
             const unitPrice = getValues(`items.${index}.unitPrice`) || 0;
             calculateTotal(index, quantity, unitPrice);
+
+            // Recalcular o valor total geral
+            setTimeout(() => {
+                recalculateTotalAmount();
+            }, 100);
         }
     };
 
-    const onSubmit = (data: any) => {
-        console.log(data);
+    const onSubmit = async (data: any) => {
+        setIsSubmitting(true);
+        try {
+            // Preparar dados do orçamento
+            let budgetData = {
+                ...data,
+                amount: data.amount.toString(),
+                items: data.items.map((item: any) => ({
+                    ...item,
+                    total: item.quantity * (item.unitPrice || 0)
+                }))
+            };
+
+            // Se for contrato e tiver cliente selecionado, incluir clientId
+            if (data.type === 'contract' && selectedClient) {
+                budgetData.clientId = selectedClient.id;
+            }
+
+            if (isEditMode && budgetId) {
+                await updateBudget(budgetId, budgetData);
+                toast.success('Orçamento atualizado com sucesso!');
+            } else {
+                await createBudget(budgetData);
+                toast.success('Orçamento criado com sucesso!');
+            }
+
+            router.push('/budget-list');
+        } catch (error) {
+            console.error('Erro ao salvar orçamento:', error);
+            toast.error('Erro ao salvar orçamento. Tente novamente.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex min-h-screen">
+                <Sidebar />
+                <main className="flex-1 bg-gray-50 p-6 md:p-8 lg:p-12 flex items-center justify-center">
+                    <div className="text-center">
+                        <Spinner className="h-8 w-8 mx-auto mb-4" />
+                        <p>Carregando dados do orçamento...</p>
+                    </div>
+                </main>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen">
             <Sidebar />
             <main className="flex-1 bg-gray-50 p-6 md:p-8 lg:p-12">
-                <h1 className="text-3xl font-bold text-gray-700 mb-6">Criar Orçamento</h1>
+                <h1 className="text-3xl font-bold text-gray-700 mb-6">
+                    {isEditMode ? 'Editar Orçamento' : 'Criar Orçamento'}
+                </h1>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                    {/* Tipo de Orçamento */}
+                    <div className="bg-white p-6 rounded-lg shadow-md">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Tipo de Orçamento</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <Controller
+                                    name="type"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select
+                                            placeholder={undefined}
+                                            label="Tipo"
+                                            value={budgetType}
+                                            onChange={(value) => handleTypeChange(value as 'avulso' | 'contract')}
+                                        >
+                                            <Option value="avulso">Avulso</Option>
+                                            <Option value="contract">Contrato</Option>
+                                        </Select>
+                                    )}
+                                />
+                                {errors.type && <p className="text-red-500 text-sm">{errors.type.message}</p>}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Seleção de Cliente para Contratos */}
+                    {budgetType === 'contract' && (
+                        <div className="bg-white p-6 rounded-lg shadow-md">
+                            <h2 className="text-xl font-semibold text-gray-800 mb-4">Cliente</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <Controller
+                                        name="clientId"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Select
+                                                placeholder={undefined}
+                                                label="Selecionar Cliente"
+                                                value={selectedClient?.id || ''}
+                                                onChange={(value) => handleClientSelect(value)}
+                                            >
+                                                {clients.map((client) => (
+                                                    <Option key={client.id} value={client.id}>
+                                                        {client.name} - {client.cnpj}
+                                                    </Option>
+                                                ))}
+                                            </Select>
+                                        )}
+                                    />
+                                    {errors.clientId && <p className="text-red-500 text-sm">{errors.clientId.message}</p>}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Informações do Cliente - Apenas para Avulso */}
+                    {budgetType === 'avulso' && (
+                        <div className="bg-white p-6 rounded-lg shadow-md">
+                            <h2 className="text-xl font-semibold text-gray-800 mb-4">Informações do Cliente</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <Input crossOrigin={undefined} label="Nome do Cliente" {...register('clientName')} />
+                                    {errors.clientName && <p className="text-red-500 text-sm">{errors.clientName.message}</p>}
+                                </div>
+                                <div>
+                                    <Controller
+                                        name="clientCnpj"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <InputMask
+                                                mask={"99.999.999/9999-99"}
+                                                {...field}
+                                                label="CNPJ do Cliente"
+                                                onChange={(e) => field.onChange(e)}
+                                                value={field.value}
+                                            />
+                                        )}
+                                    />
+                                    {errors.clientCnpj && <p className="text-red-500 text-sm">{errors.clientCnpj.message}</p>}
+                                </div>
+                                <div>
+                                    <Input crossOrigin={undefined} label="Email do Cliente" type="email" {...register('clientEmail')} />
+                                    {errors.clientEmail && <p className="text-red-500 text-sm">{errors.clientEmail.message}</p>}
+                                </div>
+                                <div>
+                                    <Controller
+                                        name="clientPhone"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <InputMask
+                                                mask={"(99) 99999-9999"}
+                                                {...field}
+                                                label="Telefone do Cliente"
+                                                onChange={(e) => field.onChange(e)}
+                                                value={field.value}
+                                            />
+                                        )}
+                                    />
+                                    {errors.clientPhone && <p className="text-red-500 text-sm">{errors.clientPhone.message}</p>}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Informações do Cliente Selecionado - Para Contratos */}
+                    {budgetType === 'contract' && selectedClient && (
+                        <div className="bg-white p-6 rounded-lg shadow-md">
+                            <h2 className="text-xl font-semibold text-gray-800 mb-4">Informações do Cliente Selecionado</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <Input
+                                        crossOrigin={undefined}
+                                        label="Nome do Cliente"
+                                        value={selectedClient.name}
+                                        readOnly
+                                        className="bg-gray-100"
+                                    />
+                                </div>
+                                <div>
+                                    <Input
+                                        crossOrigin={undefined}
+                                        label="CNPJ do Cliente"
+                                        value={selectedClient.cnpj}
+                                        readOnly
+                                        className="bg-gray-100"
+                                    />
+                                </div>
+                                <div>
+                                    <Input
+                                        crossOrigin={undefined}
+                                        label="Email do Cliente"
+                                        value={selectedClient.email}
+                                        readOnly
+                                        className="bg-gray-100"
+                                    />
+                                </div>
+                                <div>
+                                    <Input
+                                        crossOrigin={undefined}
+                                        label="Telefone do Cliente"
+                                        value={selectedClient.phone}
+                                        readOnly
+                                        className="bg-gray-100"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <Input  crossOrigin={undefined} label="Nome do Cliente" {...register('clientName')} />
-                            {errors.clientName && <p className="text-red-500 text-sm">{errors.clientName.message}</p>}
-                        </div>
-                        <div>
-                            <Controller
-                                name="clientCnpj"
-                                control={control}
-                                render={({ field }) => (
-                                    <InputMask
-                                        mask={"99.999.999/9999-99"}
-                                        {...field}
-                                        label="CNPJ do Cliente"
-                                        onChange={(e) => field.onChange(e)}
-                                        value={field.value}
-                                    />
-                                )}
-
-                            />
-                            {errors.clientCnpj && <p className="text-red-500 text-sm">{errors.clientCnpj.message}</p>}
-
-                        </div>
-                        <div>
-                            <Input  crossOrigin={undefined} label="Email do Cliente" type="email" {...register('clientEmail')} />
-                            {errors.clientEmail && <p className="text-red-500 text-sm">{errors.clientEmail.message}</p>}
-                        </div>
-                        <div>
-                            <Controller
-                                name="clientPhone"
-                                control={control}
-                                render={({ field }) => (
-                                    <InputMask
-                                        mask={"(99) 99999-9999"}
-                                        {...field}
-                                        label="Telefone do Cliente"
-
-                                        onChange={(e) => field.onChange(e)}
-                                        value={field.value}
-                                    />
-                                )}
-                            />
-
-                            {errors.clientPhone && <p className="text-red-500 text-sm">{errors.clientPhone.message}</p>}
-                        </div>
-                        <div>
-                            <Textarea  label="Descrição" {...register('description')} />
+                            <Textarea label="Descrição" {...register('description')} />
                             {errors.description && <p className="text-red-500 text-sm">{errors.description.message}</p>}
                         </div>
                         <div>
-                            <Input crossOrigin={undefined} label="Valor" type="number" {...register('amount')} />
-                            {errors.amount && <p className="text-red-500 text-sm">{errors.amount.message}</p>}
+                            <Input
+                                crossOrigin={undefined}
+                                label="Valor Total"
+                                type="text"
+                                value={`R$ ${(getValues('amount') || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                                readOnly
+                                className="bg-gray-100 font-semibold"
+                            />
+                            <p className="text-sm text-gray-600 mt-1">
+                                Valor calculado automaticamente baseado nos itens
+                            </p>
                         </div>
                         <div>
                             <Controller
@@ -128,35 +455,30 @@ const Budget = () => {
                             />
                             {errors.status && <p className="text-red-500 text-sm">{errors.status.message}</p>}
                         </div>
-                        <div>
-                            <Controller
-                                name="type"
-                                control={control}
-                                render={({ field }) => (
-                                    <Select placeholder={undefined} label="Tipo" {...field}>
-                                        <Option value="contract">Contrato</Option>
-                                        <Option value="service">Serviço</Option>
-                                    </Select>
-                                )}
-                            />
-                            {errors.type && <p className="text-red-500 text-sm">{errors.type.message}</p>}
-                        </div>
                     </div>
 
                     <div>
-                        <h2 className="text-xl font-semibold text-gray-800 mb-3">Itens</h2>
+                        <div className="flex justify-between items-center mb-3">
+                            <h2 className="text-xl font-semibold text-gray-800">Itens</h2>
+                            <div className="bg-green-100 border border-green-300 rounded-lg px-4 py-2">
+                                <span className="text-sm text-green-700 font-medium">Valor Total: </span>
+                                <span className="text-lg font-bold text-green-800">
+                                    R$ {(getValues('amount') || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        </div>
                         {fields.map((item, index) => (
                             <div key={item.id} className="bg-white p-4 rounded shadow-md mb-4">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div>
                                         <Input
-                                           crossOrigin={undefined} label="Descrição do Item"
+                                            crossOrigin={undefined} label="Descrição do Item"
                                             {...register(`items.${index}.description` as const)} />
                                         {errors.items?.[index]?.description && <p className="text-red-500 text-sm">{errors.items[index].description.message}</p>}
                                     </div>
                                     <div>
                                         <Input
-                                             crossOrigin={undefined} label="Quantidade"
+                                            crossOrigin={undefined} label="Quantidade"
                                             type="number"
                                             {...register(`items.${index}.quantity` as const, { valueAsNumber: true })}
                                             onChange={(e) => handleChange(index, 'quantity', +e.target.value)} />
@@ -164,7 +486,7 @@ const Budget = () => {
                                     </div>
                                     <div>
                                         <Input
-                                             crossOrigin={undefined} label="Preço Unitário"
+                                            crossOrigin={undefined} label="Preço Unitário"
                                             type="number"
                                             {...register(`items.${index}.unitPrice` as const, { valueAsNumber: true })}
                                             onChange={(e) => handleChange(index, 'unitPrice', +e.target.value)} />
@@ -180,7 +502,10 @@ const Budget = () => {
                                     <div>
                                         <Button
                                             color="red"
-                                            onClick={() => remove(index)}
+                                            onClick={() => {
+                                                remove(index);
+                                                setTimeout(() => recalculateTotalAmount(), 100);
+                                            }}
                                             className="mt-4"
                                             size="sm" placeholder={undefined}                                         >
                                             <TrashIcon className="h-5 w-5" />
@@ -192,7 +517,10 @@ const Budget = () => {
                         {fields.length === 0 ? <p className="text-red-500 text-sm">É necessário pelo menos um item </p> : ''}
                         <Button
                             color="blue"
-                            onClick={() => append({ description: '', quantity: 0, unitPrice: null, total: 0 })}
+                            onClick={() => {
+                                append({ description: '', quantity: 0, unitPrice: null, total: 0 });
+                                setTimeout(() => recalculateTotalAmount(), 100);
+                            }}
                             className="mt-4" placeholder={undefined}                        >
                             <div className="flex items-center space-x-2">
                                 <PlusIcon className="h-5 w-5" />
@@ -202,8 +530,21 @@ const Budget = () => {
                     </div>
 
                     <div className="mt-6">
-                        <Button type="submit" color="green" placeholder={undefined} >
-                            Enviar Orçamento
+                        <Button
+                            type="submit"
+                            color="green"
+                            placeholder={undefined}
+                            disabled={isSubmitting}
+                            className="flex items-center gap-2"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Spinner className="h-4 w-4" />
+                                    {isEditMode ? 'Atualizando...' : 'Criando...'}
+                                </>
+                            ) : (
+                                isEditMode ? 'Atualizar Orçamento' : 'Criar Orçamento'
+                            )}
                         </Button>
                     </div>
 

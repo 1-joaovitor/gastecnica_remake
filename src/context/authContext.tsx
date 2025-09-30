@@ -3,6 +3,7 @@ import { createContext, ReactNode, useContext, useEffect, useState } from "react
 import { getProfile, login } from "../services/auth";
 import axios from "axios";
 import Cookies from "js-cookie";
+import toast from "react-hot-toast";
 
 interface User {
   id: string;
@@ -72,8 +73,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       if (axios.isAxiosError(error)) {
         console.error("Login error:", error.response?.data?.message || error.message);
+        toast.error(error.response?.data?.message || "Erro ao fazer login. Verifique suas credenciais.");
       } else {
         console.error("Unexpected error:", error);
+        toast.error("Erro inesperado ao fazer login.");
       }
       throw error;
     }
@@ -85,8 +88,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       Cookies.remove("userData");
       Cookies.remove("access-token");
       setUser(null);
+      toast.success("Logout realizado com sucesso!");
     } catch (error) {
       console.error("Logout error:", error);
+      toast.error("Erro ao fazer logout.");
     } finally {
       setLoading(false);
     }

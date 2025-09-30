@@ -16,86 +16,43 @@ import {
     DialogHeader,
     DialogBody,
     DialogFooter,
+    Spinner,
 } from "@material-tailwind/react";
-import { PencilIcon, EyeIcon, DocumentTextIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, EyeIcon, TrashIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { useState } from "react";
-import PdfDocument from "@/components/pdf-document";
-import { pdf } from "@react-pdf/renderer";
+import { useState, useEffect, useCallback } from "react";
+import { getBudgets, deleteBudget, generateBudgetPDF, Budget } from "@/services/budget";
+import toast from "react-hot-toast";
+import ConfirmationModal from "@/components/ConfirmationModal";
+import DetailsModal from "@/components/DetailsModal";
+import EmailModal from "@/components/EmailModal";
+import {
+    UserIcon,
+    BuildingOfficeIcon,
+    PhoneIcon,
+    MapPinIcon,
+    CalendarIcon,
+    DocumentTextIcon,
+    CurrencyDollarIcon,
+    TagIcon
+} from "@heroicons/react/24/outline";
 
-
-
-const TABLE_HEAD = ["ID", "Nome do Cliente", "CNPJ", "Email", "Telefone", "Descrição", "Valor", "Status", "Tipo", "Data de Criação", "Ações"];
-
-const TABLE_ROWS = [
-    {
-        id: "1",
-        clientName: "Cliente A",
-        clientCnpj: "00.000.000/0001-00",
-        clientEmail: "cliente@exemplo.com",
-        clientPhone: "(00) 00000-0000",
-        description: "Descrição do orçamento",
-        amount: "$5000",
-        status: "pending",
-        type: "avulso",
-        createdAt: "2024-08-01",
-        items: [
-            { description: 'Item 1', quantity: 2, unitPrice: 100, total: 200 },
-            { description: 'Item 2', quantity: 1, unitPrice: 300, total: 300 },
-        ],
-    },
-    {
-        id: "2",
-        clientName: "Cliente B",
-        clientCnpj: "00.000.000/0001-00",
-        clientEmail: "cliente@exemplo.com",
-        clientPhone: "(00) 00000-0000",
-        description: "Descrição do orçamento",
-        amount: "$5000",
-        status: "approved",
-        type: "avulso",
-        createdAt: "2024-08-01",
-        items: [
-            { description: 'Item A', quantity: 3, unitPrice: 150, total: 450 },
-            { description: 'Item B', quantity: 2, unitPrice: 200, total: 400 },
-        ],
-    },
-    {
-        id: "3",
-        clientName: "Cliente C",
-        clientCnpj: "00.000.000/0001-00",
-        clientEmail: "cliente@exemplo.com",
-        clientPhone: "(00) 00000-0000",
-        description: "Descrição do orçamento",
-        amount: "$5000",
-        status: "rejected",
-        type: "avulso",
-        createdAt: "2024-08-01",
-        items: [
-            { description: 'Item X', quantity: 5, unitPrice: 100, total: 500 },
-            { description: 'Item Y', quantity: 4, unitPrice: 120, total: 480 },
-        ],
-    },
-];
-
-type Budget = {
-    id: string;
-    clientName: string;
-    clientCnpj: string;
-    clientEmail: string;
-    clientPhone: string;
-    description: string;
-    amount: string;
-    status: string;
-    type: string;
-    createdAt: string;
-};
+const TABLE_HEAD = ["ID", "Cliente", "CNPJ", "Email", "Telefone", "Descrição", "Valor", "Status", "Tipo", "Vinculado", "Data de Criação", "Ações"];
 
 const BudgetList = () => {
     const [open, setOpen] = useState(false);
-    const [confirmOpen, setConfirmOpen] = useState(false);
     const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
     const [budgetToDelete, setBudgetToDelete] = useState<Budget | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [emailModalOpen, setEmailModalOpen] = useState(false);
+    const [budgetForEmail, setBudgetForEmail] = useState<Budget | null>(null);
+    const [budgets, setBudgets] = useState<Budget[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
+    const [mounted, setMounted] = useState(false);
 
     const handleOpen = (budget: Budget) => {
         setSelectedBudget(budget);
@@ -107,42 +64,110 @@ const BudgetList = () => {
         setSelectedBudget(null);
     };
 
+    const handleEmailOpen = (budget: Budget) => {
+        setBudgetForEmail(budget);
+        setEmailModalOpen(true);
+    };
+
+    const handleEmailClose = () => {
+        setEmailModalOpen(false);
+        setBudgetForEmail(null);
+    };
+
     const handleDeleteOpen = (budget: Budget) => {
         setBudgetToDelete(budget);
-        setConfirmOpen(true);
     };
 
     const handleDeleteClose = () => {
-        setConfirmOpen(false);
         setBudgetToDelete(null);
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (budgetToDelete) {
-            console.log(`Deleting budget with ID: ${budgetToDelete.id}`);
-            handleDeleteClose();
+            try {
+                setIsDeleting(true);
+                await deleteBudget(budgetToDelete.id!);
+                setBudgets(budgets.filter(budget => budget.id !== budgetToDelete.id));
+                toast.success('Orçamento excluído com sucesso!');
+                handleDeleteClose();
+            } catch (error) {
+                console.error('Erro ao deletar orçamento:', error);
+                toast.error('Erro ao deletar orçamento. Tente novamente.');
+            } finally {
+                setIsDeleting(false);
+            }
         }
     };
 
-  
-    const generatePDF = async (budget:any) => {
+    const loadBudgets = useCallback(async () => {
         try {
-          const blob = await pdf(<PdfDocument budget={budget} />).toBlob();
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = 'orcamento.pdf';
-          link.click();
-          URL.revokeObjectURL(url); 
+            setLoading(true);
+            const response = await getBudgets(currentPage, 10);
+            setBudgets(response.data || []);
+            setTotalPages(response.totalPages || 1);
         } catch (error) {
-          console.error('Erro ao gerar PDF:', error);
+            console.error('Erro ao carregar orçamentos:', error);
+            toast.error('Erro ao carregar orçamentos. Tente novamente.');
+        } finally {
+            setLoading(false);
         }
-      };
+    }, [currentPage]);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (mounted) {
+            loadBudgets();
+        }
+    }, [loadBudgets, mounted]);
+
+
+    const generatePDF = async (budget: Budget) => {
+        try {
+            if (!budget.id) {
+                toast.error('ID do orçamento não encontrado');
+                return;
+            }
+
+            setGeneratingPDF(budget.id);
+
+            // Fazer requisição para a API do backend
+            const response = await generateBudgetPDF(budget.id);
+
+            // Criar blob a partir da resposta
+            const blob = new Blob([response], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+
+            // Gerar nome do arquivo baseado no cliente e CNPJ
+            const clientName = budget.clientName?.replace(/[^a-zA-Z0-9]/g, '_') || 'cliente';
+            const clientCnpj = budget.clientCnpj?.replace(/[^0-9]/g, '') || 'sem_cnpj';
+            const fileName = `orcamento_${clientName}_${clientCnpj}.pdf`;
+
+            link.download = fileName;
+            link.click();
+            URL.revokeObjectURL(url);
+            toast.success('PDF gerado com sucesso!');
+        } catch (error) {
+            console.error('Erro ao gerar PDF:', error);
+            toast.error('Erro ao gerar PDF. Tente novamente.');
+        } finally {
+            setGeneratingPDF(null);
+        }
+    };
+
+    const filteredBudgets = budgets.filter(budget =>
+        budget.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        budget.clientCnpj?.includes(searchTerm) ||
+        budget.clientEmail?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <div className="flex min-h-screen">
-           
-         <Sidebar />
-
+            <Sidebar />
             <Card className="h-full w-full p-4" placeholder={undefined} >
                 <CardHeader floated={false} shadow={false} className="rounded-none" placeholder={undefined}  >
                     <div className="mb-8 flex items-center justify-between gap-8">
@@ -162,172 +187,324 @@ const BudgetList = () => {
                     </div>
                     <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
                         <div className="w-full md:w-72">
-                            <Input label="Buscar"  crossOrigin={undefined} />
+                            <Input
+                                label="Buscar"
+                                crossOrigin={undefined}
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
                     </div>
                 </CardHeader>
                 <CardBody className="overflow-scroll px-0" placeholder={undefined}  >
-                    <table className="mt-4 w-full min-w-max table-auto text-left">
-                        <thead>
-                            <tr>
-                                {TABLE_HEAD.map((head) => (
-                                    <th key={head} className="border-y border-blue-gray-100 bg-blue-gray-50/50 p-4">
-                                        <Typography variant="small" color="blue-gray" className="font-normal leading-none opacity-70" placeholder={undefined}  >
-                                            {head}
-                                        </Typography>
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {TABLE_ROWS.map((row, index) => {
-                                const { id, clientName, clientCnpj, clientEmail, clientPhone, description, amount, status, type, createdAt } = row;
-                                const isLast = index === TABLE_ROWS.length - 1;
-                                const classes = isLast
-                                    ? "p-4"
-                                    : "p-4 border-b border-blue-gray-50";
+                    {!mounted || loading ? (
+                        <div className="flex justify-center items-center py-8">
+                            <Spinner className="h-8 w-8" />
+                            <span className="ml-2">Carregando orçamentos...</span>
+                        </div>
+                    ) : filteredBudgets.length === 0 ? (
+                        <div className="flex justify-center items-center py-8">
+                            <Typography variant="h6" color="gray" placeholder={undefined}>
+                                Nenhum orçamento encontrado
+                            </Typography>
+                        </div>
+                    ) : (
+                        <table className="mt-4 w-full min-w-max table-auto text-left">
+                            <thead>
+                                <tr>
+                                    {TABLE_HEAD.map((head) => (
+                                        <th key={head} className="border-y border-blue-gray-100 bg-blue-gray-50/50 p-4">
+                                            <Typography variant="small" color="blue-gray" className="font-normal leading-none opacity-70" placeholder={undefined}  >
+                                                {head}
+                                            </Typography>
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredBudgets.map((budget, index) => {
+                                    const isLast = index === filteredBudgets.length - 1;
+                                    const classes = isLast
+                                        ? "p-4"
+                                        : "p-4 border-b border-blue-gray-50";
 
-                                return (
-                                    <tr key={id}>
-                                        <td className={classes}>
-                                            <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
-                                                {id}
-                                            </Typography>
-                                        </td>
-                                        <td className={classes}>
-                                            <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
-                                                {clientName}
-                                            </Typography>
-                                        </td>
-                                        <td className={classes}>
-                                            <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
-                                                {clientCnpj}
-                                            </Typography>
-                                        </td>
-                                        <td className={classes}>
-                                            <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
-                                                {clientEmail}
-                                            </Typography>
-                                        </td>
-                                        <td className={classes}>
-                                            <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
-                                                {clientPhone}
-                                            </Typography>
-                                        </td>
-                                        <td className={classes}>
-                                            <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
-                                                {description}
-                                            </Typography>
-                                        </td>
-                                        <td className={classes}>
-                                            <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
-                                                {amount}
-                                            </Typography>
-                                        </td>
-                                        <td className={classes}>
-                                            <Chip
-                                                variant="ghost"
-                                                size="sm"
-                                                value={status}
-                                                color={status === 'approved' ? "green" : status === 'rejected' ? "red" : "blue-gray"}
-                                                className="w-20"
-                                            />
-                                        </td>
-                                        <td className={classes}>
-                                            <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
-                                                {type}
-                                            </Typography>
-                                        </td>
-                                        <td className={classes}>
-                                            <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
-                                                {createdAt}
-                                            </Typography>
-                                        </td>
-                                        <td className={classes}>
-                                            <div className="flex space-x-2">
-                                                <Tooltip content="Editar Orçamento">
-                                                    <IconButton
-                                                        variant="text"
-                                                        color="blue-gray" placeholder={undefined}                                                     
-                                                        
-                                                    >
-                                                        <PencilIcon className="h-5 w-5" href={`/budget?id=${id}`}/>
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip content="Ver Completo">
-                                                    <IconButton
-                                                        variant="text"
-                                                        color="blue-gray"
-                                                        onClick={() => handleOpen(row)} placeholder={undefined}                                                     >
-                                                        <EyeIcon className="h-5 w-5" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip content="Gerar PDF">
-                                                    <IconButton variant="text" color="blue-gray" placeholder={undefined} onClick={() =>generatePDF(row)}>
-                                                        <DocumentTextIcon className="h-5 w-5" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip content="Apagar Orçamento">
-                                                    <IconButton
-                                                        variant="text"
-                                                        color="red"
-                                                        onClick={() => handleDeleteOpen(row)} placeholder={undefined}                                                    >
-                                                        <TrashIcon className="h-5 w-5" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                    return (
+                                        <tr key={budget.id}>
+                                            <td className={classes}>
+                                                <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
+                                                    {budget.id?.substring(0, 8)}...
+                                                </Typography>
+                                            </td>
+                                            <td className={classes}>
+                                                <div className="flex flex-col">
+                                                    <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
+                                                        {budget.clientName}
+                                                    </Typography>
+                                                    {budget.client && (
+                                                        <Chip
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            value="Vinculado"
+                                                            color="green"
+                                                            className="w-fit mt-1"
+                                                            placeholder={undefined}
+                                                        />
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className={classes}>
+                                                <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
+                                                    {budget.clientCnpj}
+                                                </Typography>
+                                            </td>
+                                            <td className={classes}>
+                                                <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
+                                                    {budget.clientEmail}
+                                                </Typography>
+                                            </td>
+                                            <td className={classes}>
+                                                <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
+                                                    {budget.clientPhone}
+                                                </Typography>
+                                            </td>
+                                            <td className={classes}>
+                                                <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
+                                                    {budget.description?.substring(0, 30)}...
+                                                </Typography>
+                                            </td>
+                                            <td className={classes}>
+                                                <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
+                                                    R$ {parseFloat(budget.amount || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </Typography>
+                                            </td>
+                                            <td className={classes}>
+                                                <Chip
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    value={budget.status === 'approved' ? 'Aprovado' : budget.status === 'rejected' ? 'Rejeitado' : 'Pendente'}
+                                                    color={budget.status === 'approved' ? "green" : budget.status === 'rejected' ? "red" : "blue-gray"}
+                                                    className="w-20"
+                                                />
+                                            </td>
+                                            <td className={classes}>
+                                                <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
+                                                    {budget.type === 'avulso' ? 'Avulso' : 'Contrato'}
+                                                </Typography>
+                                            </td>
+                                            <td className={classes}>
+                                                <Chip
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    value={budget.client ? 'Sim' : 'Não'}
+                                                    color={budget.client ? "green" : "blue-gray"}
+                                                    className="w-fit"
+                                                    placeholder={undefined}
+                                                />
+                                            </td>
+                                            <td className={classes}>
+                                                <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined} >
+                                                    {budget.createdAt ? new Date(budget.createdAt).toLocaleDateString('pt-BR') : '-'}
+                                                </Typography>
+                                            </td>
+                                            <td className={classes}>
+                                                <div className="flex space-x-2">
+                                                    <Tooltip content="Editar Orçamento">
+                                                        <IconButton
+                                                            variant="text"
+                                                            color="blue-gray"
+                                                            placeholder={undefined}
+                                                            onClick={() => window.location.href = `/budget?id=${budget.id}`}
+                                                        >
+                                                            <PencilIcon className="h-5 w-5" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip content="Ver Completo">
+                                                        <IconButton
+                                                            variant="text"
+                                                            color="blue-gray"
+                                                            onClick={() => handleOpen(budget)}
+                                                            placeholder={undefined}
+                                                        >
+                                                            <EyeIcon className="h-5 w-5" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip content="Gerar PDF">
+                                                        <IconButton
+                                                            variant="text"
+                                                            color="blue-gray"
+                                                            placeholder={undefined}
+                                                            onClick={() => generatePDF(budget)}
+                                                            disabled={generatingPDF === budget.id}
+                                                        >
+                                                            {generatingPDF === budget.id ? (
+                                                                <Spinner className="h-5 w-5" />
+                                                            ) : (
+                                                                <DocumentTextIcon className="h-5 w-5" />
+                                                            )}
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip content="Enviar por Email">
+                                                        <IconButton
+                                                            variant="text"
+                                                            color="blue"
+                                                            onClick={() => handleEmailOpen(budget)}
+                                                            placeholder={undefined}
+                                                        >
+                                                            <EnvelopeIcon className="h-5 w-5" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip content="Apagar Orçamento">
+                                                        <IconButton
+                                                            variant="text"
+                                                            color="red"
+                                                            onClick={() => handleDeleteOpen(budget)}
+                                                            placeholder={undefined}
+                                                        >
+                                                            <TrashIcon className="h-5 w-5" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    )}
                 </CardBody>
                 <CardFooter className="flex items-center justify-between border-t border-blue-gray-50 p-4" placeholder={undefined} >
-                    
-                    <div>pagination</div>
+                    <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined}>
+                        Total: {filteredBudgets.length} orçamentos
+                    </Typography>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outlined"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            placeholder={undefined}
+                        >
+                            Anterior
+                        </Button>
+                        <Typography variant="small" color="blue-gray" className="font-normal" placeholder={undefined}>
+                            Página {currentPage} de {totalPages}
+                        </Typography>
+                        <Button
+                            variant="outlined"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                            placeholder={undefined}
+                        >
+                            Próxima
+                        </Button>
+                    </div>
                 </CardFooter>
             </Card>
 
-           
-            <Dialog open={open} handler={handleClose} placeholder={undefined} >
-                <DialogHeader placeholder={undefined}>Detalhes do Orçamento</DialogHeader>
-                <DialogBody placeholder={undefined} >
-                    <Typography variant="h6" placeholder={undefined}>{selectedBudget?.clientName}</Typography>
-                    <Typography variant="body2">ID: {selectedBudget?.id}</Typography>
-                    <Typography variant="body2">CNPJ: {selectedBudget?.clientCnpj}</Typography>
-                    <Typography variant="body2">Email: {selectedBudget?.clientEmail}</Typography>
-                    <Typography variant="body2">Telefone: {selectedBudget?.clientPhone}</Typography>
-                    <Typography variant="body2">Descrição: {selectedBudget?.description}</Typography>
-                    <Typography variant="body2">Valor: {selectedBudget?.amount}</Typography>
-                    <Typography variant="body2">Status: {selectedBudget?.status}</Typography>
-                    <Typography variant="body2">Tipo: {selectedBudget?.type}</Typography>
-                    <Typography variant="body2">Data de Criação: {selectedBudget?.createdAt}</Typography>
-                </DialogBody>
-                <DialogFooter placeholder={undefined} >
-                    <Button variant="outlined" color="blue-gray" onClick={handleClose} placeholder={undefined} >
-                        Fechar
-                    </Button>
-                </DialogFooter>
-            </Dialog>
 
-          
-            <Dialog open={confirmOpen} handler={handleDeleteClose}  >
-                <DialogHeader placeholder={undefined} >Confirmação de Exclusão</DialogHeader>
-                <DialogBody placeholder={undefined} >
-                    <Typography variant="body1">
-                        Tem certeza de que deseja excluir o orçamento com ID: {budgetToDelete?.id}?
-                    </Typography>
-                </DialogBody>
-                <DialogFooter className="gap-4" placeholder={undefined} >
-                    <Button variant="outlined" color="blue-gray" onClick={handleDeleteClose} placeholder={undefined} >
-                        Cancelar
-                    </Button>
-                    <Button variant="filled" color="red" onClick={handleDelete} placeholder={undefined} >
-                        Excluir
-                    </Button>
-                </DialogFooter>
-            </Dialog>
+            <DetailsModal
+                isOpen={open}
+                onClose={handleClose}
+                title={selectedBudget?.clientName || 'Orçamento'}
+                subtitle="Informações completas do orçamento"
+                type="budget"
+                details={selectedBudget ? [
+                    {
+                        label: 'ID do Orçamento',
+                        value: selectedBudget.id,
+                        icon: <DocumentTextIcon className="h-5 w-5 text-gray-500" />,
+                        type: 'text'
+                    },
+                    {
+                        label: 'Cliente',
+                        value: selectedBudget.clientName,
+                        icon: <UserIcon className="h-5 w-5 text-blue-500" />,
+                        type: 'text'
+                    },
+                    {
+                        label: 'CNPJ',
+                        value: selectedBudget.clientCnpj,
+                        icon: <BuildingOfficeIcon className="h-5 w-5 text-green-500" />,
+                        type: 'text'
+                    },
+                    {
+                        label: 'Email',
+                        value: selectedBudget.clientEmail,
+                        icon: <EnvelopeIcon className="h-5 w-5 text-purple-500" />,
+                        type: 'email'
+                    },
+                    {
+                        label: 'Telefone',
+                        value: selectedBudget.clientPhone,
+                        icon: <PhoneIcon className="h-5 w-5 text-orange-500" />,
+                        type: 'phone'
+                    },
+                    {
+                        label: 'Descrição',
+                        value: selectedBudget.description,
+                        icon: <DocumentTextIcon className="h-5 w-5 text-indigo-500" />,
+                        type: 'text'
+                    },
+                    {
+                        label: 'Valor',
+                        value: selectedBudget.amount,
+                        icon: <CurrencyDollarIcon className="h-5 w-5 text-green-600" />,
+                        type: 'currency'
+                    },
+                    {
+                        label: 'Status',
+                        value: selectedBudget.status,
+                        icon: <TagIcon className="h-5 w-5 text-red-500" />,
+                        type: 'status'
+                    },
+                    {
+                        label: 'Tipo',
+                        value: selectedBudget.type,
+                        icon: <TagIcon className="h-5 w-5 text-teal-500" />,
+                        type: 'status'
+                    },
+                    {
+                        label: 'Vinculado ao Cliente',
+                        value: selectedBudget.client ? 'Sim' : 'Não',
+                        icon: <UserIcon className="h-5 w-5 text-cyan-500" />,
+                        type: 'status'
+                    },
+                    ...(selectedBudget.client ? [{
+                        label: 'ID do Cliente Vinculado',
+                        value: selectedBudget.client.id,
+                        icon: <BuildingOfficeIcon className="h-5 w-5 text-cyan-500" />,
+                        type: 'text'
+                    }] : []),
+                    {
+                        label: 'Data de Criação',
+                        value: selectedBudget.createdAt,
+                        icon: <CalendarIcon className="h-5 w-5 text-pink-500" />,
+                        type: 'date'
+                    }
+                ] : []}
+            />
+
+
+            <ConfirmationModal
+                isOpen={!!budgetToDelete}
+                onClose={handleDeleteClose}
+                onConfirm={handleDelete}
+                title="Confirmar Exclusão"
+                message={`Tem certeza de que deseja excluir o orçamento do cliente "${budgetToDelete?.clientName}"? Esta ação não pode ser desfeita.`}
+                confirmText="Excluir"
+                cancelText="Cancelar"
+                isLoading={isDeleting}
+                type="danger"
+            />
+
+            <EmailModal
+                isOpen={emailModalOpen}
+                onClose={handleEmailClose}
+                budgetId={budgetForEmail?.id || ''}
+                clientName={budgetForEmail?.clientName || ''}
+                clientEmail={budgetForEmail?.clientEmail}
+            />
         </div>
     );
 };

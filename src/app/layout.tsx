@@ -4,6 +4,7 @@ import { Roboto } from "next/font/google";
 import { Layout, FixedPlugin } from "@/components";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { AuthProvider } from "@/context/authContext";
+import { Toaster } from "react-hot-toast";
 const roboto = Roboto({
   subsets: ["latin"],
   weight: ["300", "400", "500", "700", "900"],
@@ -38,6 +39,30 @@ export default function RootLayout({
             <FixedPlugin />
             <SpeedInsights />
           </Layout>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+              },
+              success: {
+                duration: 3000,
+                iconTheme: {
+                  primary: '#4ade80',
+                  secondary: '#fff',
+                },
+              },
+              error: {
+                duration: 5000,
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
         </AuthProvider>
         <link
           rel="stylesheet"
