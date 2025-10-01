@@ -70,7 +70,7 @@ const ConfirmationModal = ({
                 </div>
             </DialogHeader>
             <DialogBody placeholder={undefined}>
-                <Typography variant="body1" color="blue-gray" placeholder={undefined}>
+                <Typography variant="paragraph" color="blue-gray" placeholder={undefined}>
                     {message}
                 </Typography>
             </DialogBody>

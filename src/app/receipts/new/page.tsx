@@ -99,6 +99,11 @@ export default function NewReceiptPage() {
   };
 
   const convertNumberToWords = (value: number): string => {
+    // Verificar se o valor é válido
+    if (!value || isNaN(value) || value < 0) {
+      return 'valor inválido';
+    }
+
     const units = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
     const teens = ['dez', 'onze', 'doze', 'treze', 'catorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
     const tens = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
@@ -378,12 +383,32 @@ export default function NewReceiptPage() {
                   Valor *
                 </label>
                 <input
-                  {...register('amount', { valueAsNumber: true })}
+                  {...register('amount', {
+                    valueAsNumber: true,
+                    onChange: (e) => {
+                      try {
+                        const value = parseFloat(e.target.value) || 0;
+                        setValue('amount', value);
+                      } catch (error) {
+                        console.error('Erro ao processar valor:', error);
+                        setValue('amount', 0);
+                      }
+                    }
+                  })}
                   type="number"
                   step="0.01"
                   min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00"
+                  onInput={(e) => {
+                    const target = e.target as HTMLInputElement;
+                    if (target.value && !isNaN(parseFloat(target.value))) {
+                      const value = parseFloat(target.value);
+                      if (value >= 0) {
+                        setValue('amount', value);
+                      }
+                    }
+                  }}
                 />
                 {errors.amount && (
                   <p className="text-red-500 text-sm mt-1">{errors.amount.message}</p>
@@ -405,7 +430,7 @@ export default function NewReceiptPage() {
               </div>
             </div>
 
-            {watchedAmount && watchedAmount > 0 && (
+            {watchedAmount && watchedAmount > 0 && !isNaN(watchedAmount) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Valor por Extenso

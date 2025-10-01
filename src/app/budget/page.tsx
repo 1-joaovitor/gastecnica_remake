@@ -107,11 +107,11 @@ const Budget = () => {
 
     // Carregar dados do orçamento se estiver editando
     useEffect(() => {
-        if (budgetId) {
+        if (budgetId && clients.length > 0) {
             setIsEditMode(true);
             loadBudgetData();
         }
-    }, [budgetId]);
+    }, [budgetId, clients]);
 
     const loadBudgetData = async () => {
         if (!budgetId) return;
@@ -119,6 +119,17 @@ const Budget = () => {
         try {
             setIsLoading(true);
             const budget = await getBudgetById(budgetId);
+
+            // Definir o tipo do orçamento
+            setBudgetType(budget.type || 'avulso');
+
+            // Se for contrato e tiver cliente vinculado, selecionar o cliente
+            if (budget.type === 'contract' && budget.client) {
+                const client = clients.find(c => c.id === budget.client.id);
+                if (client) {
+                    setSelectedClient(client);
+                }
+            }
 
             // Preencher o formulário com os dados do orçamento
             reset({
@@ -130,6 +141,7 @@ const Budget = () => {
                 amount: budget.amount || '',
                 status: budget.status || 'pending',
                 type: budget.type || 'avulso',
+                clientId: budget.client?.id || '',
                 items: budget.items?.length > 0 ? budget.items : [{ description: '', quantity: 0, unitPrice: null, total: 0 }],
             });
         } catch (error) {
@@ -230,9 +242,14 @@ const Budget = () => {
                 }))
             };
 
-            // Se for contrato e tiver cliente selecionado, incluir clientId
+            // Se for contrato e tiver cliente selecionado, incluir dados do cliente
             if (data.type === 'contract' && selectedClient) {
                 budgetData.clientId = selectedClient.id;
+                // Garantir que os dados do cliente sejam enviados
+                budgetData.clientName = selectedClient.name;
+                budgetData.clientCnpj = selectedClient.cnpj;
+                budgetData.clientEmail = selectedClient.email;
+                budgetData.clientPhone = selectedClient.phone;
             }
 
             if (isEditMode && budgetId) {
@@ -286,8 +303,11 @@ const Budget = () => {
                                         <Select
                                             placeholder={undefined}
                                             label="Tipo"
-                                            value={budgetType}
-                                            onChange={(value) => handleTypeChange(value as 'avulso' | 'contract')}
+                                            value={field.value || budgetType}
+                                            onChange={(value) => {
+                                                field.onChange(value);
+                                                handleTypeChange(value as 'avulso' | 'contract');
+                                            }}
                                         >
                                             <Option value="avulso">Avulso</Option>
                                             <Option value="contract">Contrato</Option>
@@ -312,8 +332,11 @@ const Budget = () => {
                                             <Select
                                                 placeholder={undefined}
                                                 label="Selecionar Cliente"
-                                                value={selectedClient?.id || ''}
-                                                onChange={(value) => handleClientSelect(value)}
+                                                value={field.value || selectedClient?.id || ''}
+                                                onChange={(value) => {
+                                                    field.onChange(value);
+                                                    handleClientSelect(value || '');
+                                                }}
                                             >
                                                 {clients.map((client) => (
                                                     <Option key={client.id} value={client.id}>
