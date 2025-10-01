@@ -142,7 +142,7 @@ const SignatureValidator: React.FC<SignatureValidatorProps> = ({
           </div>
         ) : validation ? (
           <div className="space-y-4">
-           
+
 
             {/* Certificado Digital */}
             {validation.certificate && (
