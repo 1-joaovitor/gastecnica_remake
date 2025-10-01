@@ -52,7 +52,7 @@ const Budget = () => {
     // Observar mudanças nos itens para calcular o total automaticamente
     const watchedItems = watch('items');
 
-    // Calcular valor total automaticamente
+    // Calcular valor total automaticamente - versão otimizada
     useEffect(() => {
         if (watchedItems && Array.isArray(watchedItems)) {
             const totalAmount = watchedItems.reduce((sum: number, item: any) => {
@@ -60,21 +60,22 @@ const Budget = () => {
                 const unitPrice = Number(item.unitPrice) || 0;
                 return sum + (quantity * unitPrice);
             }, 0);
-            setValue('amount', totalAmount);
+            setValue('amount', totalAmount, { shouldValidate: true, shouldDirty: true });
         }
     }, [watchedItems, setValue]);
 
-    // Recalcular quando os campos de quantidade ou preço mudarem
-    useEffect(() => {
-        const subscription = watch((value, { name }) => {
-            if (name && (name.includes('quantity') || name.includes('unitPrice'))) {
-                setTimeout(() => {
-                    recalculateTotalAmount();
-                }, 50);
-            }
-        });
-        return () => subscription.unsubscribe();
-    }, [watch, setValue, getValues]);
+    // Função para calcular total em tempo real
+    const calculateTotalAmount = () => {
+        const allItems = getValues('items');
+        if (allItems && Array.isArray(allItems)) {
+            const totalAmount = allItems.reduce((sum: number, item: any) => {
+                const quantity = Number(item.quantity) || 0;
+                const unitPrice = Number(item.unitPrice) || 0;
+                return sum + (quantity * unitPrice);
+            }, 0);
+            setValue('amount', totalAmount, { shouldValidate: true, shouldDirty: true });
+        }
+    };
 
     // Carregar clientes
     useEffect(() => {
@@ -154,22 +155,7 @@ const Budget = () => {
 
 
 
-    const calculateTotal = (index: number, quantity: number, unitPrice: number) => {
-        const total = quantity * unitPrice;
-        setValue(`items.${index}.total`, total, { shouldValidate: true, shouldDirty: true });
-    };
-
-    const recalculateTotalAmount = () => {
-        const allItems = getValues('items');
-        if (allItems && Array.isArray(allItems)) {
-            const totalAmount = allItems.reduce((sum: number, item: any) => {
-                const itemQuantity = Number(item.quantity) || 0;
-                const itemUnitPrice = Number(item.unitPrice) || 0;
-                return sum + (itemQuantity * itemUnitPrice);
-            }, 0);
-            setValue('amount', totalAmount);
-        }
-    };
+    // Função removida - cálculo agora é feito diretamente no useEffect e handleChange
 
     const handleTypeChange = (type: 'avulso' | 'contract') => {
         setBudgetType(type);
@@ -216,16 +202,19 @@ const Budget = () => {
     };
 
     const handleChange = (index: number, field: ItemField, value: string | number) => {
-        setValue(`items.${index}.${field}`, value);
-        if (field === 'quantity' || field === 'unitPrice') {
-            const quantity = getValues(`items.${index}.quantity`) || 0;
-            const unitPrice = getValues(`items.${index}.unitPrice`) || 0;
-            calculateTotal(index, quantity, unitPrice);
+        setValue(`items.${index}.${field}`, value, { shouldValidate: true, shouldDirty: true });
 
-            // Recalcular o valor total geral
-            setTimeout(() => {
-                recalculateTotalAmount();
-            }, 100);
+        if (field === 'quantity' || field === 'unitPrice') {
+            // Usar o valor atualizado diretamente
+            const currentQuantity = field === 'quantity' ? Number(value) : getValues(`items.${index}.quantity`) || 0;
+            const currentUnitPrice = field === 'unitPrice' ? Number(value) : getValues(`items.${index}.unitPrice`) || 0;
+
+            // Calcular total do item imediatamente
+            const itemTotal = currentQuantity * currentUnitPrice;
+            setValue(`items.${index}.total`, itemTotal, { shouldValidate: true, shouldDirty: true });
+
+            // Recalcular total geral imediatamente
+            calculateTotalAmount();
         }
     };
 
@@ -527,7 +516,6 @@ const Budget = () => {
                                             color="red"
                                             onClick={() => {
                                                 remove(index);
-                                                setTimeout(() => recalculateTotalAmount(), 100);
                                             }}
                                             className="mt-4"
                                             size="sm" placeholder={undefined}                                         >
@@ -542,7 +530,6 @@ const Budget = () => {
                             color="blue"
                             onClick={() => {
                                 append({ description: '', quantity: 0, unitPrice: null, total: 0 });
-                                setTimeout(() => recalculateTotalAmount(), 100);
                             }}
                             className="mt-4" placeholder={undefined}                        >
                             <div className="flex items-center space-x-2">
