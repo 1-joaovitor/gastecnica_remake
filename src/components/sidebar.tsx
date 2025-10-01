@@ -38,7 +38,7 @@ const Sidebar = () => {
     return (
         <div className="flex min-h-screen">
             <aside
-                className={`min-h-screen bg-custom-blue text-white w-64 p-6 transform ${open ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 transition-transform duration-300 fixed md:relative z-20`}
+                className={`min-h-screen bg-custom-blue text-white w-64 p-6 transform ${open ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 transition-transform duration-300 fixed md:relative z-20 overflow-hidden`}
             >
 
                 <div className="flex justify-center items-center text-2xl font-bold mb-6">
@@ -58,12 +58,22 @@ const Sidebar = () => {
                             src="https://cdn-icons-png.flaticon.com/128/3135/3135768.png"
                             alt={user.nomeFantasia}
                             size="md"
-                            className="w-12 h-12" placeholder={undefined} />
-                        <div>
-                            <Typography variant="h6" color="white" placeholder={undefined} >
+                            className="w-12 h-12 flex-shrink-0" placeholder={undefined} />
+                        <div className="min-w-0 flex-1">
+                            <Typography 
+                                variant="h6" 
+                                color="white" 
+                                className="truncate" 
+                                placeholder={undefined}
+                            >
                                 {user.nomeFantasia}
                             </Typography>
-                            <Typography variant="small" color="white" placeholder={undefined} >
+                            <Typography 
+                                variant="small" 
+                                color="white" 
+                                className="truncate text-xs" 
+                                placeholder={undefined}
+                            >
                                 {user.email}
                             </Typography>
                         </div>
@@ -79,7 +89,7 @@ const Sidebar = () => {
                         <li>
                             <button
                                 onClick={toggleSubmenu}
-                                className="block w-full text-left p-2 hover:bg-blue-600 rounded flex items-center justify-between"
+                                className="w-full text-left p-2 hover:bg-blue-600 rounded flex items-center justify-between"
                             >
                                 Orçamentos
                                 {isSubmenuOpen ? (

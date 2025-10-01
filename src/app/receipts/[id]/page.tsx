@@ -150,7 +150,7 @@ export default function ReceiptDetailsPage() {
                     Voltar
                 </button>
 
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Recibo #{receipt.id?.substring(0, 8)}</h1>
                         <p className="text-gray-600">
@@ -158,42 +158,51 @@ export default function ReceiptDetailsPage() {
                         </p>
                     </div>
 
-                    <div className="flex space-x-2">
-                        <button
-                            onClick={() => router.push(`/receipts/edit/${receipt.id}`)}
-                            className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                        >
-                            <PencilIcon className="h-4 w-4 mr-2" />
-                            Editar
-                        </button>
-                        <button
-                            onClick={handleGeneratePDF}
-                            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                        >
-                            <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                            PDF
-                        </button>
-                        <button
-                            onClick={() => setShowEmailModal(true)}
-                            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                        >
-                            <EnvelopeIcon className="h-4 w-4 mr-2" />
-                            Email
-                        </button>
-                        <button
-                            onClick={() => setShowSignatureValidator(true)}
-                            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                            <ShieldCheckIcon className="h-4 w-4 mr-2" />
-                            Validar Assinatura
-                        </button>
-                        <button
-                            onClick={() => setShowDeleteModal(true)}
-                            className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                        >
-                            <TrashIcon className="h-4 w-4 mr-2" />
-                            Deletar
-                        </button>
+                    {/* Botões de ação - Layout responsivo */}
+                    <div className="flex flex-col gap-3 w-full lg:w-auto">
+                        {/* Grid responsivo para os botões */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                            <button
+                                onClick={() => router.push(`/receipts/edit/${receipt.id}`)}
+                                className="flex items-center justify-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm transition-colors"
+                                title="Editar recibo"
+                            >
+                                <PencilIcon className="h-4 w-4 mr-1" />
+                                <span className="hidden sm:inline">Editar</span>
+                            </button>
+                            <button
+                                onClick={handleGeneratePDF}
+                                className="flex items-center justify-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm transition-colors"
+                                title="Gerar PDF"
+                            >
+                                <DocumentArrowDownIcon className="h-4 w-4 mr-1" />
+                                <span className="hidden sm:inline">PDF</span>
+                            </button>
+                            <button
+                                onClick={() => setShowEmailModal(true)}
+                                className="flex items-center justify-center px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm transition-colors"
+                                title="Enviar por email"
+                            >
+                                <EnvelopeIcon className="h-4 w-4 mr-1" />
+                                <span className="hidden sm:inline">Email</span>
+                            </button>
+                            <button
+                                onClick={() => setShowSignatureValidator(true)}
+                                className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm transition-colors"
+                                title="Validar assinatura"
+                            >
+                                <ShieldCheckIcon className="h-4 w-4 mr-1" />
+                                <span className="hidden sm:inline">Validar</span>
+                            </button>
+                            <button
+                                onClick={() => setShowDeleteModal(true)}
+                                className="flex items-center justify-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm transition-colors"
+                                title="Deletar recibo"
+                            >
+                                <TrashIcon className="h-4 w-4 mr-1" />
+                                <span className="hidden sm:inline">Deletar</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
