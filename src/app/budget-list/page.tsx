@@ -18,7 +18,7 @@ import {
     DialogFooter,
     Spinner,
 } from "@material-tailwind/react";
-import { PencilIcon, EyeIcon, TrashIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, EyeIcon, TrashIcon, EnvelopeIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { getBudgets, deleteBudget, generateBudgetPDF, Budget } from "@/services/budget";
@@ -26,6 +26,7 @@ import toast from "react-hot-toast";
 import ConfirmationModal from "@/components/ConfirmationModal";
 import DetailsModal from "@/components/DetailsModal";
 import EmailModal from "@/components/EmailModal";
+import BudgetSignatureValidator from "@/components/BudgetSignatureValidator";
 import {
     UserIcon,
     BuildingOfficeIcon,
@@ -46,6 +47,8 @@ const BudgetList = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [emailModalOpen, setEmailModalOpen] = useState(false);
     const [budgetForEmail, setBudgetForEmail] = useState<Budget | null>(null);
+    const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+    const [budgetForSignature, setBudgetForSignature] = useState<Budget | null>(null);
     const [budgets, setBudgets] = useState<Budget[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -67,6 +70,11 @@ const BudgetList = () => {
     const handleEmailOpen = (budget: Budget) => {
         setBudgetForEmail(budget);
         setEmailModalOpen(true);
+    };
+
+    const handleValidateSignature = (budget: Budget) => {
+        setBudgetForSignature(budget);
+        setSignatureModalOpen(true);
     };
 
     const handleEmailClose = () => {
@@ -353,6 +361,18 @@ const BudgetList = () => {
                                                             <EnvelopeIcon className="h-5 w-5" />
                                                         </IconButton>
                                                     </Tooltip>
+                                                    {budget.digitalSignature && (
+                                                        <Tooltip content="Validar Assinatura Digital">
+                                                            <IconButton
+                                                                variant="text"
+                                                                color="green"
+                                                                onClick={() => handleValidateSignature(budget)}
+                                                                placeholder={undefined}
+                                                            >
+                                                                <ShieldCheckIcon className="h-5 w-5" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
                                                     <Tooltip content="Apagar Orçamento">
                                                         <IconButton
                                                             variant="text"
@@ -504,6 +524,13 @@ const BudgetList = () => {
                 budgetId={budgetForEmail?.id || ''}
                 clientName={budgetForEmail?.clientName || ''}
                 clientEmail={budgetForEmail?.clientEmail}
+            />
+
+            <BudgetSignatureValidator
+                isOpen={signatureModalOpen}
+                onClose={() => setSignatureModalOpen(false)}
+                budgetId={budgetForSignature?.id || ''}
+                budgetTitle={budgetForSignature?.clientName || 'Orçamento'}
             />
         </div>
     );

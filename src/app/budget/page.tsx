@@ -7,7 +7,7 @@ import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import Sidebar from '@/components/sidebar';
 import { schema } from './schema';
 import InputMask from '@/components/inputMask';
-import { createBudget, getBudgetById, updateBudget, type Budget } from '@/services/budget';
+import { createBudget, getBudgetById, updateBudget, updateBudgetSignature, type Budget } from '@/services/budget';
 import { getClients, type Client } from '@/services/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -41,6 +41,12 @@ const Budget = () => {
             status: 'pending',
             type: 'avulso',
             items: [{ description: '', quantity: 0, unitPrice: null, total: 0 }],
+            digitalSignature: '',
+            signatureHash: '',
+            certificateId: '',
+            signatureTimestamp: null,
+            signatureValidUntil: null,
+            validationQRCode: '',
         },
     });
 
@@ -144,6 +150,12 @@ const Budget = () => {
                 type: budget.type || 'avulso',
                 clientId: budget.client?.id || '',
                 items: budget.items?.length > 0 ? budget.items : [{ description: '', quantity: 0, unitPrice: null, total: 0 }],
+                digitalSignature: budget.digitalSignature || '',
+                signatureHash: budget.signatureHash || '',
+                certificateId: budget.certificateId || '',
+                signatureTimestamp: budget.signatureTimestamp || null,
+                signatureValidUntil: budget.signatureValidUntil || null,
+                validationQRCode: budget.validationQRCode || '',
             });
         } catch (error) {
             console.error('Erro ao carregar orçamento:', error);
@@ -225,28 +237,46 @@ const Budget = () => {
             let budgetData = {
                 ...data,
                 amount: data.amount.toString(),
+                clientCnpj: data.clientCnpj.replace(/[^0-9]/g, ''),
+                clientPhone: data.clientPhone.replace(/[^0-9]/g, ''),
                 items: data.items.map((item: any) => ({
                     ...item,
                     total: item.quantity * (item.unitPrice || 0)
                 }))
             };
 
+
+
             // Se for contrato e tiver cliente selecionado, incluir dados do cliente
             if (data.type === 'contract' && selectedClient) {
                 budgetData.clientId = selectedClient.id;
-                // Garantir que os dados do cliente sejam enviados
+                // Garantir que os dados do cliente sejam enviados (limpar máscaras)
                 budgetData.clientName = selectedClient.name;
-                budgetData.clientCnpj = selectedClient.cnpj;
+                budgetData.clientCnpj = selectedClient.cnpj.replace(/[^0-9]/g, '');
                 budgetData.clientEmail = selectedClient.email;
-                budgetData.clientPhone = selectedClient.phone;
+                budgetData.clientPhone = selectedClient.phone.replace(/[^0-9]/g, '');
+
             }
 
+            let savedBudget;
             if (isEditMode && budgetId) {
-                await updateBudget(budgetId, budgetData);
+                savedBudget = await updateBudget(budgetId, budgetData);
                 toast.success('Orçamento atualizado com sucesso!');
             } else {
-                await createBudget(budgetData);
+                savedBudget = await createBudget(budgetData);
                 toast.success('Orçamento criado com sucesso!');
+            }
+
+            // Se há assinatura digital, chamar API específica de assinatura
+            if (data.digitalSignature && data.digitalSignature.trim()) {
+                try {
+                    console.log('Assinando orçamento:', savedBudget.id);
+                    await updateBudgetSignature(savedBudget.id, data.digitalSignature);
+                    toast.success('Assinatura digital aplicada com sucesso!');
+                } catch (error) {
+                    console.error('Erro ao aplicar assinatura:', error);
+                    toast.error('Erro ao aplicar assinatura digital');
+                }
             }
 
             router.push('/budget-list');
@@ -537,6 +567,59 @@ const Budget = () => {
                                 <span>Adicionar Item</span>
                             </div>
                         </Button>
+                    </div>
+
+                    {/* Seção de Assinatura Digital */}
+                    <div className="bg-white p-6 rounded-lg shadow-md">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Assinatura Digital (Opcional)</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <Textarea
+                                    label="Assinatura Digital"
+                                    placeholder="Digite sua assinatura digital aqui..."
+                                    {...register('digitalSignature')}
+                                    rows={3}
+                                />
+                                <p className="text-sm text-gray-600 mt-1">
+                                    Campo opcional para adicionar assinatura digital ao orçamento
+                                </p>
+                            </div>
+
+                            {/* Mostrar informações de validação se existir assinatura */}
+                            {getValues('digitalSignature') && (
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <h3 className="text-sm font-semibold text-green-800 mb-2">Informações de Validação</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <span className="font-medium text-green-700">Certificado:</span>
+                                            <p className="text-green-600">{getValues('certificateId') || 'Não gerado'}</p>
+                                        </div>
+                                        <div>
+                                            <span className="font-medium text-green-700">Data da Assinatura:</span>
+                                            <p className="text-green-600">
+                                                {getValues('signatureTimestamp')
+                                                    ? new Date(getValues('signatureTimestamp')).toLocaleString('pt-BR')
+                                                    : 'Não definida'
+                                                }
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <span className="font-medium text-green-700">Válido até:</span>
+                                            <p className="text-green-600">
+                                                {getValues('signatureValidUntil')
+                                                    ? new Date(getValues('signatureValidUntil')).toLocaleString('pt-BR')
+                                                    : 'Não definido'
+                                                }
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <span className="font-medium text-green-700">QR Code:</span>
+                                            <p className="text-green-600">{getValues('validationQRCode') ? 'Disponível' : 'Não gerado'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="mt-6">

@@ -21,6 +21,12 @@ export interface Budget {
     createdAt?: string;
     updatedAt?: string;
     client?: any;
+    digitalSignature?: string;
+    signatureHash?: string;
+    certificateId?: string;
+    signatureTimestamp?: string;
+    signatureValidUntil?: string;
+    validationQRCode?: string;
 }
 
 export interface BudgetResponse {
@@ -102,6 +108,38 @@ export const sendBudgetPDFByEmail = async (id: string, email: string, customMess
         return response.data;
     } catch (error) {
         console.error('Erro ao enviar PDF por email:', error);
+        throw error;
+    }
+};
+
+export const validateBudgetSignature = async (id: string) => {
+    try {
+        const response = await api.get(`/budget/${id}/validate-signature`);
+        return response.data;
+    } catch (error) {
+        console.error('Erro ao validar assinatura:', error);
+        throw error;
+    }
+};
+
+export const updateBudgetSignature = async (id: string, signature: string) => {
+    try {
+        const response = await api.put(`/budget/${id}/signature`, {
+            signature
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Erro ao atualizar assinatura:', error);
+        throw error;
+    }
+};
+
+export const generateBudgetCertificate = async (id: string) => {
+    try {
+        const response = await api.post(`/budget/${id}/generate-certificate`);
+        return response.data;
+    } catch (error) {
+        console.error('Erro ao gerar certificado:', error);
         throw error;
     }
 };

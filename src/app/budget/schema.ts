@@ -37,4 +37,10 @@ export const schema = Yup.object().shape({
             total: Yup.number().nullable(),
         })
     ).required('É necessário pelo menos um item'),
+    digitalSignature: Yup.string().nullable(),
+    signatureHash: Yup.string().nullable(),
+    certificateId: Yup.string().nullable(),
+    signatureTimestamp: Yup.date().nullable(),
+    signatureValidUntil: Yup.date().nullable(),
+    validationQRCode: Yup.string().nullable(),
 });
