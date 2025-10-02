@@ -20,6 +20,7 @@ import {
 } from "@material-tailwind/react";
 import { PencilIcon, EyeIcon, TrashIcon, EnvelopeIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { getBudgets, deleteBudget, generateBudgetPDF, Budget } from "@/services/budget";
 import toast from "react-hot-toast";
@@ -41,6 +42,7 @@ import {
 const TABLE_HEAD = ["ID", "Cliente", "CNPJ", "Email", "Telefone", "Descrição", "Valor", "Status", "Tipo", "Vinculado", "Data de Criação", "Ações"];
 
 const BudgetList = () => {
+    const router = useRouter();
     const [open, setOpen] = useState(false);
     const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
     const [budgetToDelete, setBudgetToDelete] = useState<Budget | null>(null);
@@ -321,7 +323,7 @@ const BudgetList = () => {
                                                             variant="text"
                                                             color="blue-gray"
                                                             placeholder={undefined}
-                                                            onClick={() => window.location.href = `/budget?id=${budget.id}`}
+                                                            onClick={() => router.push(`/budget?id=${budget.id}`)}
                                                         >
                                                             <PencilIcon className="h-5 w-5" />
                                                         </IconButton>

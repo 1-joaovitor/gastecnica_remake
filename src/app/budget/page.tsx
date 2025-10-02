@@ -10,7 +10,7 @@ import InputMask from '@/components/inputMask';
 import { createBudget, getBudgetById, updateBudget, updateBudgetSignature, type Budget } from '@/services/budget';
 import { getClients, type Client } from '@/services/client';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 
 type ItemField = 'description' | 'quantity' | 'unitPrice' | 'total';
@@ -36,6 +36,10 @@ const Budget = () => {
             clientCnpj: '',
             clientEmail: '',
             clientPhone: '',
+            clientStreet: '',
+            clientNumber: '',
+            clientNeighborhood: '',
+            clientZipCode: '',
             description: '',
             amount: 0,
             status: 'pending',
@@ -109,24 +113,20 @@ const Budget = () => {
             setValue('clientCnpj', '');
             setValue('clientEmail', '');
             setValue('clientPhone', '');
+            setValue('clientStreet', '');
+            setValue('clientNumber', '');
+            setValue('clientNeighborhood', '');
+            setValue('clientZipCode', '');
         }
     }, [budgetType, setValue]);
 
-    // Carregar dados do orçamento se estiver editando
-    useEffect(() => {
-        if (budgetId && clients.length > 0) {
-            setIsEditMode(true);
-            loadBudgetData();
-        }
-    }, [budgetId, clients]);
-
-    const loadBudgetData = async () => {
+    const loadBudgetData = useCallback(async () => {
         if (!budgetId) return;
 
         try {
             setIsLoading(true);
             const budget = await getBudgetById(budgetId);
-
+            console.log('Budget loaded:', budget);
             // Definir o tipo do orçamento
             setBudgetType(budget.type || 'avulso');
 
@@ -163,7 +163,64 @@ const Budget = () => {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [budgetId, clients, reset]);
+
+    // Carregar dados do orçamento se estiver editando
+    useEffect(() => {
+        if (budgetId) {
+            setIsEditMode(true);
+
+            // Carregar dados diretamente aqui em vez de chamar loadBudgetData
+            const loadData = async () => {
+                try {
+                    setIsLoading(true);
+                    const budget = await getBudgetById(budgetId);
+
+                    // Definir o tipo do orçamento
+                    setBudgetType(budget.type || 'avulso');
+
+                    // Se for contrato e tiver cliente vinculado, selecionar o cliente
+                    if (budget.type === 'contract' && budget.client && clients.length > 0) {
+                        const client = clients.find(c => c.id === budget.client.id);
+                        if (client) {
+                            setSelectedClient(client);
+                        }
+                    }
+
+                    // Preencher o formulário com os dados do orçamento
+                    reset({
+                        clientName: budget.clientName || '',
+                        clientCnpj: budget.clientCnpj || '',
+                        clientEmail: budget.clientEmail || '',
+                        clientPhone: budget.clientPhone || '',
+                        clientStreet: budget.clientStreet || '',
+                        clientNumber: budget.clientNumber || '',
+                        clientNeighborhood: budget.clientNeighborhood || '',
+                        clientZipCode: budget.clientZipCode || '',
+                        description: budget.description || '',
+                        amount: budget.amount || '',
+                        status: budget.status || 'pending',
+                        type: budget.type || 'avulso',
+                        clientId: budget.client?.id || '',
+                        items: budget.items?.length > 0 ? budget.items : [{ description: '', quantity: 0, unitPrice: null, total: 0 }],
+                        digitalSignature: budget.digitalSignature || '',
+                        signatureHash: budget.signatureHash || '',
+                        certificateId: budget.certificateId || '',
+                        signatureTimestamp: budget.signatureTimestamp || null,
+                        signatureValidUntil: budget.signatureValidUntil || null,
+                        validationQRCode: budget.validationQRCode || '',
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar orçamento:', error);
+                    toast.error('Erro ao carregar dados do orçamento');
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            loadData();
+        }
+    }, [budgetId, clients, reset]);
 
 
 
@@ -178,6 +235,10 @@ const Budget = () => {
         setValue('clientCnpj', '');
         setValue('clientEmail', '');
         setValue('clientPhone', '');
+        setValue('clientStreet', '');
+        setValue('clientNumber', '');
+        setValue('clientNeighborhood', '');
+        setValue('clientZipCode', '');
         setValue('clientId', '');
         setSelectedClient(null);
 
@@ -198,6 +259,10 @@ const Budget = () => {
             setValue('clientCnpj', '');
             setValue('clientEmail', '');
             setValue('clientPhone', '');
+            setValue('clientStreet', '');
+            setValue('clientNumber', '');
+            setValue('clientNeighborhood', '');
+            setValue('clientZipCode', '');
             return;
         }
 
@@ -210,6 +275,10 @@ const Budget = () => {
             setValue('clientCnpj', client.cnpj);
             setValue('clientEmail', client.email);
             setValue('clientPhone', client.phone);
+            setValue('clientStreet', client.street || '');
+            setValue('clientNumber', client.number || '');
+            setValue('clientNeighborhood', client.neighborhood || '');
+            setValue('clientZipCode', client.zipCode || '');
         }
     };
 
@@ -388,7 +457,7 @@ const Budget = () => {
                                             <InputMask
                                                 mask={"99.999.999/9999-99"}
                                                 {...field}
-                                                label="CNPJ do Cliente"
+                                                label="CNPJ do Cliente (Opcional)"
                                                 onChange={(e) => field.onChange(e)}
                                                 value={field.value}
                                             />
@@ -397,7 +466,7 @@ const Budget = () => {
                                     {errors.clientCnpj && <p className="text-red-500 text-sm">{errors.clientCnpj.message}</p>}
                                 </div>
                                 <div>
-                                    <Input crossOrigin={undefined} label="Email do Cliente" type="email" {...register('clientEmail')} />
+                                    <Input crossOrigin={undefined} label="Email do Cliente (Opcional)" type="email" {...register('clientEmail')} />
                                     {errors.clientEmail && <p className="text-red-500 text-sm">{errors.clientEmail.message}</p>}
                                 </div>
                                 <div>
@@ -408,13 +477,43 @@ const Budget = () => {
                                             <InputMask
                                                 mask={"(99) 99999-9999"}
                                                 {...field}
-                                                label="Telefone do Cliente"
+                                                label="Telefone do Cliente (Opcional)"
                                                 onChange={(e) => field.onChange(e)}
                                                 value={field.value}
                                             />
                                         )}
                                     />
                                     {errors.clientPhone && <p className="text-red-500 text-sm">{errors.clientPhone.message}</p>}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                <div>
+                                    <Input crossOrigin={undefined} label="Rua (Opcional)" {...register('clientStreet')} />
+                                    {errors.clientStreet && <p className="text-red-500 text-sm">{errors.clientStreet.message}</p>}
+                                </div>
+                                <div>
+                                    <Input crossOrigin={undefined} label="Número (Opcional)" {...register('clientNumber')} />
+                                    {errors.clientNumber && <p className="text-red-500 text-sm">{errors.clientNumber.message}</p>}
+                                </div>
+                                <div>
+                                    <Input crossOrigin={undefined} label="Bairro (Opcional)" {...register('clientNeighborhood')} />
+                                    {errors.clientNeighborhood && <p className="text-red-500 text-sm">{errors.clientNeighborhood.message}</p>}
+                                </div>
+                                <div>
+                                    <Controller
+                                        name="clientZipCode"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <InputMask
+                                                mask={"99999-999"}
+                                                {...field}
+                                                label="CEP (Opcional)"
+                                                onChange={(e) => field.onChange(e)}
+                                                value={field.value}
+                                            />
+                                        )}
+                                    />
+                                    {errors.clientZipCode && <p className="text-red-500 text-sm">{errors.clientZipCode.message}</p>}
                                 </div>
                             </div>
                         </div>
@@ -457,6 +556,44 @@ const Budget = () => {
                                         crossOrigin={undefined}
                                         label="Telefone do Cliente"
                                         value={selectedClient.phone}
+                                        readOnly
+                                        className="bg-gray-100"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                <div>
+                                    <Input
+                                        crossOrigin={undefined}
+                                        label="Rua"
+                                        value={selectedClient.street || ''}
+                                        readOnly
+                                        className="bg-gray-100"
+                                    />
+                                </div>
+                                <div>
+                                    <Input
+                                        crossOrigin={undefined}
+                                        label="Número"
+                                        value={selectedClient.number || ''}
+                                        readOnly
+                                        className="bg-gray-100"
+                                    />
+                                </div>
+                                <div>
+                                    <Input
+                                        crossOrigin={undefined}
+                                        label="Bairro"
+                                        value={selectedClient.neighborhood || ''}
+                                        readOnly
+                                        className="bg-gray-100"
+                                    />
+                                </div>
+                                <div>
+                                    <Input
+                                        crossOrigin={undefined}
+                                        label="CEP"
+                                        value={selectedClient.zipCode || ''}
                                         readOnly
                                         className="bg-gray-100"
                                     />

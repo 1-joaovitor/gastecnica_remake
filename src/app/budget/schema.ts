@@ -7,17 +7,37 @@ export const schema = Yup.object().shape({
     }),
     clientCnpj: Yup.string().when('type', {
         is: 'avulso',
-        then: (schema) => schema.required('Campo obrigatório'),
+        then: (schema) => schema.nullable(),
         otherwise: (schema) => schema.nullable()
     }),
     clientEmail: Yup.string().when('type', {
         is: 'avulso',
-        then: (schema) => schema.email('Email inválido').required('Campo obrigatório'),
+        then: (schema) => schema.email('Email inválido').nullable(),
         otherwise: (schema) => schema.nullable()
     }),
     clientPhone: Yup.string().when('type', {
         is: 'avulso',
-        then: (schema) => schema.required('Campo obrigatório'),
+        then: (schema) => schema.nullable(),
+        otherwise: (schema) => schema.nullable()
+    }),
+    clientStreet: Yup.string().when('type', {
+        is: 'avulso',
+        then: (schema) => schema.nullable(),
+        otherwise: (schema) => schema.nullable()
+    }),
+    clientNumber: Yup.string().when('type', {
+        is: 'avulso',
+        then: (schema) => schema.nullable(),
+        otherwise: (schema) => schema.nullable()
+    }),
+    clientNeighborhood: Yup.string().when('type', {
+        is: 'avulso',
+        then: (schema) => schema.nullable(),
+        otherwise: (schema) => schema.nullable()
+    }),
+    clientZipCode: Yup.string().when('type', {
+        is: 'avulso',
+        then: (schema) => schema.nullable(),
         otherwise: (schema) => schema.nullable()
     }),
     clientId: Yup.string().when('type', {
