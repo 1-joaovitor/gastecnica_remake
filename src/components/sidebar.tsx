@@ -106,6 +106,7 @@ const Sidebar = () => {
                             )}
                         </li>
                         <li><a href="/receipts" className="block p-2 hover:bg-blue-600 rounded">Recibos</a></li>
+                        <li><a href="/bills" className="block p-2 hover:bg-blue-600 rounded">Boletos</a></li>
                         {/* <li><a href="#" className="block p-2 hover:bg-blue-600 rounded">Colaboradores</a></li> */}
                         <li><a href="/clients" className="block p-2 hover:bg-blue-600 rounded">Clientes</a></li>
                     </ul>
