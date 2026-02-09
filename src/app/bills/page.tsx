@@ -18,10 +18,12 @@ import {
   DocumentArrowDownIcon,
   CheckCircleIcon,
   ClockIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import PDFViewerModal from '@/components/PDFViewerModal';
 import Sidebar from '@/components/sidebar';
 import {
   Card,
@@ -81,6 +83,7 @@ export default function BillsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
+  const [showPDFModal, setShowPDFModal] = useState(false);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -149,7 +152,8 @@ export default function BillsPage() {
         toast.error('PDF não disponível para este boleto');
         return;
       }
-      const blob = await downloadBillPDF(bill.id);
+      // Passar inline=false para forçar download
+      const blob = await downloadBillPDF(bill.id, false);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -337,15 +341,29 @@ export default function BillsPage() {
                         <td className={classes}>
                           <div className="flex items-center gap-2">
                             {bill.hasPDF && (
-                              <Tooltip content="Baixar PDF">
-                                <IconButton
-                                  variant="text"
-                                  color="blue-gray"
-                                  onClick={() => handleDownloadPDF(bill)}
-                                >
-                                  <DocumentArrowDownIcon className="h-4 w-4" />
-                                </IconButton>
-                              </Tooltip>
+                              <>
+                                <Tooltip content="Visualizar PDF">
+                                  <IconButton
+                                    variant="text"
+                                    color="blue-gray"
+                                    onClick={() => {
+                                      setSelectedBill(bill);
+                                      setShowPDFModal(true);
+                                    }}
+                                  >
+                                    <EyeIcon className="h-4 w-4" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip content="Baixar PDF">
+                                  <IconButton
+                                    variant="text"
+                                    color="blue-gray"
+                                    onClick={() => handleDownloadPDF(bill)}
+                                  >
+                                    <DocumentArrowDownIcon className="h-4 w-4" />
+                                  </IconButton>
+                                </Tooltip>
+                              </>
                             )}
                             {bill.status !== 'paid' && (
                               <Tooltip content="Marcar como pago">
@@ -406,6 +424,17 @@ export default function BillsPage() {
           title="Marcar como pago"
           message={`Tem certeza que deseja marcar o boleto de ${selectedBill?.beneficiary} como pago? O PDF será removido.`}
           type="warning"
+        />
+
+        <PDFViewerModal
+          isOpen={showPDFModal}
+          onClose={() => {
+            setShowPDFModal(false);
+            setSelectedBill(null);
+          }}
+          billId={selectedBill?.id || ''}
+          billBeneficiary={selectedBill?.beneficiary}
+          onDownload={() => selectedBill && handleDownloadPDF(selectedBill)}
         />
       </div>
     </div>

@@ -109,9 +109,10 @@ export async function getBillStats(): Promise<BillStats> {
 /**
  * Download do PDF do boleto
  */
-export async function downloadBillPDF(id: string): Promise<Blob> {
+export async function downloadBillPDF(id: string, inline: boolean = false): Promise<Blob> {
   const response = await api.get(`/bills/${id}/pdf`, {
     responseType: 'blob',
+    params: inline ? { inline: 'true' } : {},
   });
   return response.data;
 }
